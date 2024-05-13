@@ -32,16 +32,16 @@ const pkgdata = union(enum) {
     }
 };
 
-const Response = struct {
+pub const Response = struct {
     resultcount: u16,
     results: []pkgdata,
     type: []u8,
     version: u16,
 };
 
-var json_output: []const u8 = undefined;
+pub var json_output: []const u8 = undefined;
 
-const ops = std.json.ParseOptions{
+pub const ops = std.json.ParseOptions{
     .ignore_unknown_fields = true,
 };
 
@@ -59,34 +59,18 @@ fn fetch_json(allocator: Allocator, easy: Easy, comptime name: []const u8) !void
     json_output = try std.fmt.allocPrint(std.heap.page_allocator, "{s}", .{resp.body.?.items});
 }
 
-pub fn fetch_database(name: []const u8, database: []u8) !void {
-    const allocator = std.heap.page_allocator;
-
-    const ca_bundle = try curl.allocCABundle(allocator);
-    defer ca_bundle.deinit();
-    const easy = try Easy.init(allocator, .{
-        .ca_bundle = ca_bundle,
-    });
-    defer easy.deinit();
-
+pub const get_pkgdata = struct {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
+    pub const global_allocator = gpa.allocator();
 
-    const gpa_allocator = gpa.allocator();
-
-    try fetch_json(allocator, easy, name);
-    const parsed = try std.json.parseFromSlice(Response, gpa_allocator, json_output, ops);
-    defer parsed.deinit();
-
-    database = parsed;
-
-    // std.debug.print("Packages found: {d}\n\n", .{parsed.value.results.len});
-    // for (0..parsed.value.results.len) |i| {
-    //     switch (parsed.value.results[i]) {
-    //         .Data => |data| {
-    //             std.debug.print("Package name: {s}\n", .{data.Name});
-    //             std.debug.print("Description: {s}\n\n", .{data.Description});
-    //         },
-    //     }
-    // }
-}
+    pub fn fetch_database(comptime name: []const u8) !void {
+        const allocator = std.heap.page_allocator;
+        const ca_bundle = try curl.allocCABundle(allocator);
+        defer ca_bundle.deinit();
+        const easy = try Easy.init(allocator, .{
+            .ca_bundle = ca_bundle,
+        });
+        defer easy.deinit();
+        try fetch_json(allocator, easy, name);
+    }
+};

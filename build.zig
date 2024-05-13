@@ -16,6 +16,7 @@ pub fn build(b: *std.Build) !void {
     zig_aur.root_module.addImport("curl", curl.module("curl"));
     zig_aur.linkLibC();
 
+    zigaur_module.addImport("curl", curl.module("curl"));
     try b.modules.put(b.dupe("zig-aur"), zigaur_module);
     b.installArtifact(zig_aur);
 }
