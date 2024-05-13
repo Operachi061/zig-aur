@@ -11,7 +11,7 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = .{ .path = "src/main.zig" },
     });
     const zigaur_module = b.addModule("zig-aur", .{
-        .root_source_file = .{ .path = "src/libcrtp.zig" },
+        .root_source_file = .{ .path = "src/main.zig" },
     });
     zig_aur.root_module.addImport("curl", curl.module("curl"));
     zig_aur.linkLibC();
