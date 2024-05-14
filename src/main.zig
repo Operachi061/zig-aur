@@ -7,6 +7,8 @@ const Easy = curl.Easy;
 const Data = struct {
     Description: []const u8,
     Name: []const u8,
+    URLPath: []const u8,
+    Version: []const u8,
 };
 
 const pkgdata = union(enum) {
@@ -19,11 +21,15 @@ const pkgdata = union(enum) {
             .Data => {
                 const description = parsed.object.get("Description") orelse return error.UnexpectedToken;
                 const name = parsed.object.get("Name") orelse return error.UnexpectedToken;
+                const urlpath = parsed.object.get("URLPath") orelse return error.UnexpectedToken;
+                const version = parsed.object.get("Version") orelse return error.UnexpectedToken;
 
                 return pkgdata{
                     .Data = Data{
                         .Description = description.string,
                         .Name = name.string,
+                        .URLPath = try std.fmt.allocPrint(std.heap.page_allocator, "https://aur.archlinux.org{s}", .{urlpath.string}),
+                        .Version = version.string,
                     },
                 };
             },
@@ -45,8 +51,9 @@ pub const ops = std.json.ParseOptions{
     .ignore_unknown_fields = true,
 };
 
-fn fetch_json(allocator: Allocator, easy: Easy, comptime name: []const u8) !void {
-    const pkgurl = "https://aur.archlinux.org/rpc/v5/search/" ++ name;
+fn fetch_json(allocator: Allocator, easy: Easy, name: []u8) !void {
+    var buffer: [100]u8 = undefined;
+    const pkgurl: [:0]u8 = try std.fmt.bufPrintZ(&buffer, "https://aur.archlinux.org/rpc/v5/search/{s}", .{name});
     try easy.setUrl(pkgurl);
     try easy.setMethod(.PUT);
     var buf = curl.Buffer.init(allocator);
@@ -63,7 +70,7 @@ pub const get_pkgdata = struct {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     pub const global_allocator = gpa.allocator();
 
-    pub fn fetch_database(comptime name: []const u8) !void {
+    pub fn fetch_database(name: []u8) !void {
         const allocator = std.heap.page_allocator;
         const ca_bundle = try curl.allocCABundle(allocator);
         defer ca_bundle.deinit();
